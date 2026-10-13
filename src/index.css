@@ -1,0 +1,613 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+
+/* ─── DAY THEME (Default) — Dark UI ────────────────────────── */
+@layer base {
+  :root,
+  [data-theme="day"] {
+    /* Base surfaces */
+    --color-bg:             #0d0d0f;
+    --color-surface:        #161618;
+    --color-surface2:       #1e1e22;
+    --color-surface3:       #252529;
+
+    /* Borders */
+    --color-border:         #2c2c32;
+    --color-border-bright:  #3c3c44;
+
+    /* Text */
+    --color-text:           #f4f4f6;
+    --color-text-muted:     #8a8a9a;
+    --color-text-dim:       #4a4a5a;
+
+    /* Accent */
+    --color-accent:         #4f8ef7;
+    --color-accent-glow:    rgba(79, 142, 247, 0.22);
+
+    /* Semantic */
+    --color-danger:         #ff4d4f;
+    --color-warn:           #ff8c00;
+    --color-success:        #2ed573;
+    --color-speed:          #ff8c00;
+    --color-nav-blue:       #74b3fe;
+
+    /* Neumorphism shadows — dark extruded style */
+    --neu-shadow-out:
+      6px 6px 14px rgba(0, 0, 0, 0.55),
+      -4px -4px 10px rgba(255, 255, 255, 0.025);
+    --neu-shadow-in:
+      inset 4px 4px 10px rgba(0, 0, 0, 0.6),
+      inset -3px -3px 8px rgba(255, 255, 255, 0.02);
+    --neu-shadow-btn:
+      5px 5px 12px rgba(0, 0, 0, 0.5),
+      -3px -3px 8px rgba(255, 255, 255, 0.03);
+    --neu-shadow-btn-pressed:
+      inset 3px 3px 8px rgba(0, 0, 0, 0.6),
+      inset -2px -2px 6px rgba(255, 255, 255, 0.02);
+
+    /* Map background */
+    --map-bg: #141416;
+
+    /* Typography */
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+    --font-sans: 'Inter', system-ui, sans-serif;
+
+    /* Safe areas */
+    --safe-top:    env(safe-area-inset-top,    0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left:   env(safe-area-inset-left,   0px);
+    --safe-right:  env(safe-area-inset-right,  0px);
+  }
+
+  /* ─── NIGHT THEME — Light Neumorphism ───────────────────── */
+  [data-theme="night"] {
+    /* Base surfaces */
+    --color-bg:             #e8e9f0;
+    --color-surface:        #edeef5;
+    --color-surface2:       #e2e3ea;
+    --color-surface3:       #d8d9e0;
+
+    /* Borders */
+    --color-border:         #d0d1da;
+    --color-border-bright:  #b8b9c5;
+
+    /* Text */
+    --color-text:           #1a1b2e;
+    --color-text-muted:     #5a5b70;
+    --color-text-dim:       #9a9bb0;
+
+    /* Accent — warmer amber for night cockpit readability */
+    --color-accent:         #3b7ef5;
+    --color-accent-glow:    rgba(59, 126, 245, 0.18);
+
+    /* Semantic */
+    --color-danger:         #e02020;
+    --color-warn:           #e07b00;
+    --color-success:        #1ab85c;
+    --color-speed:          #e07b00;
+    --color-nav-blue:       #3b7ef5;
+
+    /* Neumorphism shadows — light lifted style */
+    --neu-shadow-out:
+      6px 6px 14px rgba(160, 162, 180, 0.7),
+      -6px -6px 14px rgba(255, 255, 255, 0.9);
+    --neu-shadow-in:
+      inset 5px 5px 12px rgba(160, 162, 180, 0.65),
+      inset -5px -5px 12px rgba(255, 255, 255, 0.85);
+    --neu-shadow-btn:
+      5px 5px 11px rgba(155, 157, 175, 0.65),
+      -5px -5px 11px rgba(255, 255, 255, 0.88);
+    --neu-shadow-btn-pressed:
+      inset 4px 4px 9px rgba(155, 157, 175, 0.65),
+      inset -4px -4px 9px rgba(255, 255, 255, 0.88);
+
+    /* Map background */
+    --map-bg: #dddee8;
+  }
+
+  /* ─── Global reset ──────────────────────────────────────── */
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: var(--color-bg);
+    transition: background 0.6s ease, color 0.6s ease;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-text);
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background 0.6s ease, color 0.6s ease;
+  }
+
+  #root {
+    display: flex;
+    flex-direction: column;
+    padding-top:    var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+    padding-left:   var(--safe-left);
+    padding-right:  var(--safe-right);
+  }
+}
+
+/* ============================================================
+   Scrollable Areas
+   ============================================================ */
+.scrollable {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* ============================================================
+   Status Strip
+   ============================================================ */
+.status-strip {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 8px;
+  transition: background 0.6s ease;
+}
+
+/* ============================================================
+   CARDS — Neumorphic
+   ============================================================ */
+.card {
+  background: var(--color-surface);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: var(--neu-shadow-out);
+  border: none;
+  transition: background 0.6s ease, box-shadow 0.6s ease;
+}
+
+.card-sm {
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.card-inset {
+  background: var(--color-surface2);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: var(--neu-shadow-in);
+  border: none;
+}
+
+.card-glow {
+  box-shadow: var(--neu-shadow-out), 0 0 20px var(--color-accent-glow);
+}
+
+/* ============================================================
+   BUTTONS — Neumorphic Raised/Pressed
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px 20px;
+  min-height: 48px;
+  cursor: pointer;
+  border: none;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--neu-shadow-btn);
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.12s ease,
+    background 0.6s ease,
+    color 0.3s ease;
+  user-select: none;
+  position: relative;
+  outline: none;
+}
+
+.btn:hover {
+  box-shadow:
+    var(--neu-shadow-btn),
+    0 0 0 1px var(--color-border-bright);
+}
+
+.btn:active,
+.btn.pressed {
+  box-shadow: var(--neu-shadow-btn-pressed);
+  transform: scale(0.97);
+}
+
+/* Primary */
+.btn-primary {
+  background: var(--color-accent);
+  color: #fff;
+  box-shadow:
+    5px 5px 12px rgba(0, 0, 0, 0.35),
+    -3px -3px 8px rgba(255, 255, 255, 0.08),
+    0 0 16px var(--color-accent-glow);
+}
+.btn-primary:hover {
+  box-shadow:
+    5px 5px 12px rgba(0, 0, 0, 0.4),
+    -3px -3px 8px rgba(255, 255, 255, 0.08),
+    0 0 22px var(--color-accent-glow);
+}
+.btn-primary:active {
+  box-shadow:
+    inset 3px 3px 8px rgba(0, 0, 0, 0.4),
+    0 0 10px var(--color-accent-glow);
+}
+
+/* Danger */
+.btn-danger {
+  background: var(--color-danger);
+  color: #fff;
+  box-shadow: 5px 5px 12px rgba(0,0,0,0.35), -3px -3px 8px rgba(255,255,255,0.06);
+}
+
+/* Warn */
+.btn-warn {
+  background: var(--color-warn);
+  color: #fff;
+  box-shadow: 5px 5px 12px rgba(0,0,0,0.35), -3px -3px 8px rgba(255,255,255,0.06);
+}
+
+/* Ghost */
+.btn-ghost {
+  background: var(--color-surface2);
+  color: var(--color-text);
+  box-shadow: var(--neu-shadow-btn);
+}
+
+/* Success */
+.btn-success {
+  background: var(--color-success);
+  color: #000;
+  font-weight: 800;
+  box-shadow: 5px 5px 12px rgba(0,0,0,0.35), -3px -3px 8px rgba(255,255,255,0.06);
+}
+
+/* Icon */
+.btn-icon {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 12px;
+  min-height: unset;
+}
+
+/* ============================================================
+   Status indicators
+   ============================================================ */
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-dot.active {
+  background: var(--color-success);
+  box-shadow: 0 0 7px var(--color-success);
+}
+.status-dot.warn {
+  background: var(--color-warn);
+  box-shadow: 0 0 7px var(--color-warn);
+}
+.status-dot.error {
+  background: var(--color-danger);
+  box-shadow: 0 0 7px var(--color-danger);
+}
+.status-dot.idle {
+  background: var(--color-text-dim);
+}
+
+/* ============================================================
+   Map container
+   ============================================================ */
+.map-container {
+  position: relative;
+  overflow: hidden;
+  background: var(--map-bg);
+  border-radius: 16px;
+  box-shadow: var(--neu-shadow-in);
+  transition: background 0.6s ease, box-shadow 0.6s ease;
+}
+
+/* ============================================================
+   Bottom Navigation Bar — Neumorphic
+   ============================================================ */
+.nav-bar {
+  display: flex;
+  background: var(--color-surface);
+  border-top: none;
+  padding: 6px 8px calc(6px + var(--safe-bottom));
+  justify-content: space-around;
+  align-items: center;
+  flex-shrink: 0;
+  z-index: 100;
+  box-shadow:
+    0 -4px 16px rgba(0, 0, 0, 0.18),
+    var(--neu-shadow-out);
+  transition: background 0.6s ease, box-shadow 0.6s ease;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  min-width: 52px;
+  min-height: 48px;
+  box-shadow: none;
+}
+
+.nav-item.active {
+  color: var(--color-accent);
+  background: var(--color-surface2);
+  box-shadow: var(--neu-shadow-in);
+}
+
+.nav-item:hover:not(.active) {
+  color: var(--color-text);
+  background: var(--color-surface2);
+}
+
+/* ============================================================
+   Metric tiles — Neumorphic Inset
+   ============================================================ */
+.metric-tile {
+  background: var(--color-surface);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: var(--neu-shadow-in);
+  border: none;
+  transition: background 0.6s ease, box-shadow 0.6s ease;
+}
+
+.metric-label {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.metric-unit {
+  font-size: 11px;
+  color: var(--color-text-dim);
+  font-weight: 500;
+}
+
+/* ============================================================
+   Form elements — Neumorphic Inputs
+   ============================================================ */
+.input {
+  background: var(--color-surface);
+  border: none;
+  border-radius: 10px;
+  color: var(--color-text);
+  padding: 12px 14px;
+  font-size: 14px;
+  width: 100%;
+  font-family: var(--font-sans);
+  outline: none;
+  box-shadow: var(--neu-shadow-in);
+  transition: box-shadow 0.2s ease, background 0.6s ease;
+}
+
+.input:focus {
+  box-shadow:
+    var(--neu-shadow-in),
+    0 0 0 2px var(--color-accent);
+}
+
+.input::placeholder {
+  color: var(--color-text-dim);
+}
+
+.label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 5px;
+  display: block;
+}
+
+/* ============================================================
+   Toggle — Neumorphic pill
+   ============================================================ */
+.toggle {
+  width: 46px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--color-surface2);
+  border: none;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.25s ease;
+  flex-shrink: 0;
+  box-shadow: var(--neu-shadow-in);
+}
+
+.toggle.on {
+  background: var(--color-accent);
+  box-shadow:
+    var(--neu-shadow-in),
+    0 0 10px var(--color-accent-glow);
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-text);
+  top: 3px;
+  left: 3px;
+  transition: transform 0.22s ease;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.toggle.on::after {
+  transform: translateX(20px);
+  background: #fff;
+}
+
+/* ============================================================
+   Speedometer Ring
+   ============================================================ */
+.speed-ring {
+  transition: stroke-dashoffset 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.speed-needle {
+  transform-origin: center;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ============================================================
+   Quick Action Buttons — Neumorphic Grid
+   ============================================================ */
+.quick-action-btn {
+  background: var(--color-surface);
+  border: none;
+  border-radius: 14px;
+  padding: 12px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  min-height: 64px;
+  box-shadow: var(--neu-shadow-btn);
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.12s ease,
+    background 0.6s ease;
+}
+
+.quick-action-btn:hover {
+  box-shadow:
+    var(--neu-shadow-btn),
+    0 0 0 1px var(--color-border-bright);
+}
+
+.quick-action-btn:active {
+  box-shadow: var(--neu-shadow-btn-pressed);
+  transform: scale(0.96);
+}
+
+/* ============================================================
+   Glow effects
+   ============================================================ */
+.glow-blue   { text-shadow: 0 0 14px rgba(79, 142, 247, 0.65); }
+.glow-orange { text-shadow: 0 0 14px rgba(255, 140, 0, 0.75); }
+.glow-green  { text-shadow: 0 0 14px rgba(46, 213, 115, 0.65); }
+.glow-red    { text-shadow: 0 0 14px rgba(255, 77, 79, 0.65); }
+
+/* ============================================================
+   Animations
+   ============================================================ */
+@keyframes pulse-ring {
+  0%   { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.pulse-ring { animation: pulse-ring 1.5s ease-out infinite; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.fade-in { animation: fadeIn 0.22s ease-out; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin { animation: spin 1s linear infinite; }
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* Theme transition — everything changes smoothly */
+*, *::before, *::after {
+  transition-property: background-color, border-color, box-shadow, color;
+  transition-duration: 0.5s;
+  transition-timing-function: ease;
+}
+
+/* Override — motion-sensitive elements must NOT use the global transition */
+.speed-ring,
+.speed-needle,
+.toggle::after,
+.btn,
+.btn:hover,
+.btn:active,
+.quick-action-btn,
+.quick-action-btn:hover,
+.quick-action-btn:active {
+  transition-property: box-shadow, transform, background-color, color;
+  transition-duration: 0.18s, 0.12s, 0.5s, 0.3s;
+}
+
+/* ============================================================
+   Landscape overrides
+   ============================================================ */
+@media (orientation: landscape) and (max-height: 600px) {
+  .landscape-compact {
+    padding: 4px !important;
+  }
+}
+
+/* ============================================================
+   Leaflet map overrides — Night mode lightens the map tiles
+   ============================================================ */
+[data-theme="night"] .leaflet-tile {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) saturate(0.9);
+}
