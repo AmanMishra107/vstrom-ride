@@ -14,6 +14,8 @@ import {
   Music,
   Disc3,
   Sparkles,
+  FolderSearch,
+  Zap,
 } from 'lucide-react';
 import ModuleHeader from '../components/ModuleHeader';
 import {
@@ -27,31 +29,57 @@ import { formatDuration } from '../utils/gpsUtils';
 
 export default function MusicScreen() {
   const [tracks, setTracks] = useState<LocalTrack[]>([]);
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [currentIndex, setCurrentIndex] = useState<number>(() => {
+    const saved = localStorage.getItem('vstrom-last-track-idx');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [isPlaying, setIsPlaying] = useState<boolean>(true); // Default to auto-playing
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
-  const [volume, setVolume] = useState<number>(1);
+  const [volume, setVolume] = useState<number>(() => {
+    const saved = localStorage.getItem('vstrom-music-volume');
+    return saved ? parseFloat(saved) : 1;
+  });
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('all');
+  const [autoPlayEnabled, setAutoPlayEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('vstrom-autoplay') !== 'false';
+  });
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loadingTracks, setLoadingTracks] = useState<boolean>(true);
+  const [scanningFolder, setScanningFolder] = useState<boolean>(false);
+  const [autoplayBlocked, setAutoplayBlocked] = useState<boolean>(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Load saved tracks from IndexedDB on mount
+  // Auto-load all tracks from phone's IndexedDB on mount
   useEffect(() => {
     getAllLocalTracks().then((loaded) => {
       setTracks(loaded);
       setLoadingTracks(false);
+
+      if (loaded.length > 0) {
+        const saved = localStorage.getItem('vstrom-last-track-idx');
+        const idx = saved ? parseInt(saved, 10) : 0;
+        const validIdx = idx >= 0 && idx < loaded.length ? idx : 0;
+        setCurrentIndex(validIdx);
+      }
     });
   }, []);
 
   const currentTrack: LocalTrack | undefined = tracks[currentIndex];
 
-  // Revoke previous object URL and create a new one when track changes
+  // Remember last track index
+  useEffect(() => {
+    if (tracks.length > 0) {
+      localStorage.setItem('vstrom-last-track-idx', String(currentIndex));
+    }
+  }, [currentIndex, tracks.length]);
+
+  // Create object URL for active track
   useEffect(() => {
     if (!currentTrack) {
       setAudioUrl(null);
@@ -66,15 +94,48 @@ export default function MusicScreen() {
     };
   }, [currentTrack]);
 
-  // Sync MediaSession metadata for Bluetooth helmet intercoms & lock screen
+  // Attempt automatic playback when track URL is ready
+  useEffect(() => {
+    if (!audioRef.current || !audioUrl) return;
+
+    if (autoPlayEnabled || isPlaying) {
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPlaying(true);
+            setAutoplayBlocked(false);
+          })
+          .catch((err) => {
+            console.log('[AutoPlay] Browser awaiting user gesture:', err);
+            setAutoplayBlocked(true);
+
+            // Unlock on the very first touch/click anywhere on screen
+            const unlock = () => {
+              audioRef.current
+                ?.play()
+                .then(() => {
+                  setIsPlaying(true);
+                  setAutoplayBlocked(false);
+                })
+                .catch(() => {});
+            };
+            window.addEventListener('click', unlock, { once: true });
+            window.addEventListener('touchstart', unlock, { once: true });
+          });
+      }
+    }
+  }, [audioUrl, autoPlayEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Bluetooth Helmet & Lock Screen Sync (MediaSession)
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentTrack) return;
 
     try {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentTrack.title,
-        artist: currentTrack.artist || 'V-Strom Ride OS Phone Library',
-        album: 'Cockpit Audio',
+        artist: currentTrack.artist || 'Phone Storage',
+        album: 'V-Strom Ride OS Audio',
         artwork: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -82,10 +143,11 @@ export default function MusicScreen() {
       });
 
       navigator.mediaSession.setActionHandler('play', () => {
-        audioRef.current?.play().catch(() => {});
+        audioRef.current?.play().then(() => setIsPlaying(true)).catch(() => {});
       });
       navigator.mediaSession.setActionHandler('pause', () => {
         audioRef.current?.pause();
+        setIsPlaying(false);
       });
       navigator.mediaSession.setActionHandler('previoustrack', () => {
         handlePrevious();
@@ -93,88 +155,85 @@ export default function MusicScreen() {
       navigator.mediaSession.setActionHandler('nexttrack', () => {
         handleNext();
       });
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.seekTime != null && audioRef.current) {
-          audioRef.current.currentTime = details.seekTime;
-        }
-      });
     } catch {
-      // Ignored if browser mediaSession is restricted
+      // Ignored if restricted
     }
   }, [currentTrack]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Play / Pause toggle
   const togglePlay = () => {
-    if (!audioRef.current || !audioUrl) return;
+    if (!audioRef.current) return;
 
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play().catch((err) => {
-        console.warn('Audio play failed:', err);
-      });
+      audioRef.current
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          setAutoplayBlocked(false);
+        })
+        .catch(() => {});
     }
   };
 
-  // Next track logic
+  // Next track
   const handleNext = useCallback(() => {
     if (tracks.length === 0) return;
 
+    let nextIdx = (currentIndex + 1) % tracks.length;
     if (isShuffle && tracks.length > 1) {
       let rand = Math.floor(Math.random() * tracks.length);
       if (rand === currentIndex) rand = (rand + 1) % tracks.length;
-      setCurrentIndex(rand);
-    } else {
-      setCurrentIndex((prev) => (prev + 1) % tracks.length);
+      nextIdx = rand;
     }
+
+    setCurrentIndex(nextIdx);
+    setIsPlaying(true);
   }, [tracks.length, isShuffle, currentIndex]);
 
-  // Previous track logic
+  // Previous track
   const handlePrevious = useCallback(() => {
     if (tracks.length === 0) return;
 
-    // If more than 3 seconds in, restart track
     if (audioRef.current && audioRef.current.currentTime > 3) {
       audioRef.current.currentTime = 0;
       return;
     }
 
-    setCurrentIndex((prev) => (prev - 1 + tracks.length) % tracks.length);
-  }, [tracks.length]);
+    const prevIdx = (currentIndex - 1 + tracks.length) % tracks.length;
+    setCurrentIndex(prevIdx);
+    setIsPlaying(true);
+  }, [tracks.length, currentIndex]);
 
-  // When track ends
+  // Track finished: auto-play next track
   const handleEnded = () => {
     if (repeatMode === 'one') {
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(() => {});
       }
-    } else if (repeatMode === 'all' || isShuffle) {
-      handleNext();
     } else {
-      // 'off'
-      if (currentIndex < tracks.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-      } else {
-        setIsPlaying(false);
-      }
+      handleNext();
     }
   };
 
-  // Handle files selected from phone storage
-  const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  // Helper to ingest an array of File objects and immediately start auto-playing
+  const ingestAudioFiles = async (files: File[]) => {
+    const audioFiles = files.filter((f) =>
+      f.type.startsWith('audio/') || /\.(mp3|m4a|wav|ogg|flac|aac|wma)$/i.test(f.name)
+    );
+    if (audioFiles.length === 0) return;
 
     const newTracks: LocalTrack[] = [];
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const rawName = file.name.replace(/\.[^/.]+$/, ''); // Strip extension
-      let artist = 'Local Audio';
+    for (let i = 0; i < audioFiles.length; i++) {
+      const file = audioFiles[i];
+      const rawName = file.name.replace(/\.[^/.]+$/, '');
+      let artist = 'Phone Storage';
       let title = rawName;
 
-      // Parse common "Artist - Title" filename format
       if (rawName.includes(' - ')) {
         const parts = rawName.split(' - ');
         artist = parts[0].trim();
@@ -196,18 +255,72 @@ export default function MusicScreen() {
       newTracks.push(track);
     }
 
-    setTracks((prev) => [...prev, ...newTracks]);
-    if (tracks.length === 0 && newTracks.length > 0) {
-      setCurrentIndex(0);
-    }
+    setTracks((prev) => {
+      const merged = [...prev, ...newTracks];
+      return merged;
+    });
 
-    // Reset input so same file can be re-added if desired
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    // Auto-select first added track and immediately auto-play!
+    setCurrentIndex(tracks.length);
+    setIsPlaying(true);
+  };
+
+  // 1. Android / Chrome Native Folder Auto-Scanner (showDirectoryPicker)
+  const handleAutoDetectFolder = async () => {
+    try {
+      if ('showDirectoryPicker' in window) {
+        setScanningFolder(true);
+        const dirHandle = await (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker();
+        const foundFiles: File[] = [];
+
+        async function scanDir(dir: FileSystemDirectoryHandle) {
+          // @ts-expect-error values() is supported in modern chromium
+          for await (const entry of dir.values()) {
+            if (entry.kind === 'file') {
+              const fileHandle = entry as FileSystemFileHandle;
+              const file = await fileHandle.getFile();
+              if (file.type.startsWith('audio/') || /\.(mp3|m4a|wav|ogg|flac|aac)$/i.test(file.name)) {
+                foundFiles.push(file);
+              }
+            } else if (entry.kind === 'directory') {
+              await scanDir(entry as FileSystemDirectoryHandle);
+            }
+          }
+        }
+
+        await scanDir(dirHandle);
+        await ingestAudioFiles(foundFiles);
+        setScanningFolder(false);
+      } else {
+        // Fallback to directory input
+        folderInputRef.current?.click();
+      }
+    } catch (err) {
+      setScanningFolder(false);
+      // User cancelled picker or browser fallback
+      if ((err as Error).name !== 'AbortError') {
+        folderInputRef.current?.click();
+      }
     }
   };
 
-  // Remove track
+  // 2. Standard multi-file input
+  const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    await ingestAudioFiles(Array.from(files));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (folderInputRef.current) folderInputRef.current.value = '';
+  };
+
+  // Toggle Auto-Play on/off
+  const toggleAutoPlay = () => {
+    const next = !autoPlayEnabled;
+    setAutoPlayEnabled(next);
+    localStorage.setItem('vstrom-autoplay', String(next));
+  };
+
+  // Delete track
   const handleDeleteTrack = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     await deleteLocalTrack(id);
@@ -218,7 +331,7 @@ export default function MusicScreen() {
     }
   };
 
-  // Play synthesized demo motorcycle riding beat
+  // Demo motorcycle beat generator
   const playSynthesizedDemo = () => {
     try {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -227,7 +340,6 @@ export default function MusicScreen() {
       const durationSec = 4;
       const buffer = ctx.createBuffer(2, sampleRate * durationSec, sampleRate);
 
-      // Generate a motorcycle rhythm loop
       for (let channel = 0; channel < 2; channel++) {
         const data = buffer.getChannelData(channel);
         for (let i = 0; i < data.length; i++) {
@@ -239,7 +351,6 @@ export default function MusicScreen() {
         }
       }
 
-      // Convert buffer to wav blob
       const wavBlob = audioBufferToWav(buffer);
       const demoTrack: LocalTrack = {
         id: generateId(),
@@ -256,6 +367,7 @@ export default function MusicScreen() {
       saveLocalTrack(demoTrack).then(() => {
         setTracks((prev) => [demoTrack, ...prev]);
         setCurrentIndex(0);
+        setIsPlaying(true);
       });
     } catch (err) {
       console.warn('Demo synth failed:', err);
@@ -264,7 +376,7 @@ export default function MusicScreen() {
 
   return (
     <div className="scrollable" style={{ height: '100%', padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Hidden File Input */}
+      {/* Hidden File & Folder Inputs */}
       <input
         ref={fileInputRef}
         type="file"
@@ -273,14 +385,27 @@ export default function MusicScreen() {
         onChange={handleFilesSelected}
         style={{ display: 'none' }}
       />
+      <input
+        ref={folderInputRef}
+        type="file"
+        // @ts-expect-error webkitdirectory supported in chromium
+        webkitdirectory="true"
+        directory="true"
+        multiple
+        onChange={handleFilesSelected}
+        style={{ display: 'none' }}
+      />
 
-      {/* HTML5 Audio Engine */}
+      {/* HTML5 Audio Player Element */}
       {audioUrl && (
         <audio
           ref={audioRef}
           src={audioUrl}
-          autoPlay
-          onPlay={() => setIsPlaying(true)}
+          autoPlay={autoPlayEnabled}
+          onPlay={() => {
+            setIsPlaying(true);
+            setAutoplayBlocked(false);
+          }}
           onPause={() => setIsPlaying(false)}
           onTimeUpdate={() => {
             if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
@@ -289,6 +414,9 @@ export default function MusicScreen() {
             if (audioRef.current) {
               setDuration(audioRef.current.duration || 0);
               audioRef.current.volume = isMuted ? 0 : volume;
+              if (autoPlayEnabled || isPlaying) {
+                audioRef.current.play().catch(() => {});
+              }
             }
           }}
           onEnded={handleEnded}
@@ -298,19 +426,83 @@ export default function MusicScreen() {
       {/* Header */}
       <ModuleHeader
         title="Motorcycle Music Player"
-        subtitle="Access and play MP3 audio files directly from your phone"
+        subtitle="Auto-detects & automatically plays audio files from local storage"
         fallbackScreen="cockpit"
         rightAction={
-          <button
-            className="btn btn-primary btn-icon"
-            onClick={() => fileInputRef.current?.click()}
-            title="Import Songs from Phone"
-            style={{ width: 44, height: 44 }}
-          >
-            <FolderPlus size={18} />
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              className="btn btn-primary btn-icon"
+              onClick={handleAutoDetectFolder}
+              title="Auto-Detect Music Folder"
+              style={{ width: 44, height: 44 }}
+            >
+              <FolderSearch size={18} />
+            </button>
+            <button
+              className="btn btn-ghost btn-icon"
+              onClick={() => fileInputRef.current?.click()}
+              title="Pick Audio Files"
+              style={{ width: 44, height: 44 }}
+            >
+              <FolderPlus size={18} />
+            </button>
+          </div>
         }
       />
+
+      {/* Auto-Play Status / One-Touch Banner */}
+      {autoplayBlocked && (
+        <div
+          onClick={togglePlay}
+          className="card"
+          style={{
+            background: 'var(--color-accent)',
+            color: '#ffffff',
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            boxShadow: '0 4px 16px var(--color-accent-glow)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 13 }}>
+            <Zap size={16} /> Tap Anywhere to Start Auto-Play
+          </div>
+          <Play size={16} fill="#ffffff" />
+        </div>
+      )}
+
+      {/* Quick Auto-Play Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'var(--color-surface2)',
+          padding: '6px 12px',
+          borderRadius: 12,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--color-text-muted)' }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: autoPlayEnabled ? 'var(--color-success)' : 'var(--color-text-dim)' }} />
+          <span>Auto-Play from Local Storage: <strong style={{ color: 'var(--color-text)' }}>{autoPlayEnabled ? 'ON' : 'OFF'}</strong></span>
+        </div>
+
+        <button
+          onClick={toggleAutoPlay}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--color-accent)',
+            fontSize: 11,
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          {autoPlayEnabled ? 'Disable' : 'Enable'}
+        </button>
+      </div>
 
       {/* Main Player Card */}
       {currentTrack ? (
@@ -326,7 +518,7 @@ export default function MusicScreen() {
             boxShadow: 'var(--neu-shadow-out)',
           }}
         >
-          {/* Animated Album / Motorcycle Disc Visualizer */}
+          {/* Animated Motorcycle Disc Visualizer */}
           <div
             style={{
               position: 'relative',
@@ -389,7 +581,7 @@ export default function MusicScreen() {
               {currentTrack.artist}
             </div>
             <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 2 }}>
-              Track {currentIndex + 1} of {tracks.length}
+              Track {currentIndex + 1} of {tracks.length} • Auto-Playing
             </div>
           </div>
 
@@ -512,6 +704,7 @@ export default function MusicScreen() {
               onChange={(e) => {
                 const val = parseFloat(e.target.value);
                 setVolume(val);
+                localStorage.setItem('vstrom-music-volume', String(val));
                 setIsMuted(false);
                 if (audioRef.current) audioRef.current.volume = val;
               }}
@@ -549,28 +742,38 @@ export default function MusicScreen() {
 
           <div>
             <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--color-text)' }}>
-              No Music Loaded Yet
+              Auto-Detect Local Music
             </div>
             <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4, maxWidth: 300, lineHeight: 1.4 }}>
-              Select audio tracks (MP3, M4A, WAV, FLAC) from your phone storage. They persist offline in your cockpit library.
+              Connect your phone’s <strong>Music folder</strong> once. The app will auto-detect and immediately begin auto-playing your tracks offline!
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: 280, marginTop: 4 }}>
             <button
               className="btn btn-primary"
+              onClick={handleAutoDetectFolder}
+              disabled={scanningFolder}
+              style={{ gap: 8 }}
+            >
+              <FolderSearch size={18} />
+              {scanningFolder ? 'Scanning Phone Storage…' : 'Auto-Detect Music Folder'}
+            </button>
+
+            <button
+              className="btn btn-ghost"
               onClick={() => fileInputRef.current?.click()}
               style={{ gap: 8 }}
             >
-              <FolderPlus size={18} /> Choose Music from Phone
+              <FolderPlus size={18} /> Choose Specific Audio Files
             </button>
 
             <button
               className="btn btn-ghost"
               onClick={playSynthesizedDemo}
-              style={{ gap: 6, fontSize: 12 }}
+              style={{ gap: 6, fontSize: 12, marginTop: 4 }}
             >
-              <Sparkles size={14} color="var(--color-warn)" /> Play Demo Moto Beat
+              <Sparkles size={14} color="var(--color-warn)" /> Test with Demo Moto Beat
             </button>
           </div>
         </div>
@@ -580,28 +783,39 @@ export default function MusicScreen() {
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>Phone Audio Playlist</span>
+            <span>Local Storage Library</span>
             <span style={{ fontSize: 11, background: 'var(--color-surface2)', padding: '2px 8px', borderRadius: 10, color: 'var(--color-text-muted)' }}>
-              {tracks.length} {tracks.length === 1 ? 'song' : 'songs'}
+              {tracks.length} {tracks.length === 1 ? 'track' : 'tracks'}
             </span>
           </div>
 
-          <button
-            className="btn btn-ghost"
-            onClick={() => fileInputRef.current?.click()}
-            style={{ fontSize: 11, padding: '4px 10px', minHeight: 32, gap: 4 }}
-          >
-            <FolderPlus size={14} /> Add Songs
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              className="btn btn-ghost"
+              onClick={handleAutoDetectFolder}
+              style={{ fontSize: 11, padding: '4px 8px', minHeight: 30, gap: 4 }}
+              title="Auto-scan folder"
+            >
+              <FolderSearch size={13} /> Auto-Scan
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => fileInputRef.current?.click()}
+              style={{ fontSize: 11, padding: '4px 8px', minHeight: 30, gap: 4 }}
+              title="Add more files"
+            >
+              <FolderPlus size={13} /> Add
+            </button>
+          </div>
         </div>
 
         {loadingTracks ? (
           <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: 'var(--color-text-muted)' }}>
-            Loading library…
+            Loading local library…
           </div>
         ) : tracks.length === 0 ? (
           <div style={{ padding: '16px 8px', textAlign: 'center', fontSize: 12, color: 'var(--color-text-muted)' }}>
-            Your playlist is empty. Tap <strong>Add Songs</strong> to load audio files from your device.
+            No songs loaded yet. Tap <strong>Auto-Detect Music Folder</strong> to automatically load and play your songs.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' }}>
@@ -626,7 +840,6 @@ export default function MusicScreen() {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  {/* Track number or active equalizer */}
                   <div style={{ width: 22, textAlign: 'center', fontSize: 12, fontFamily: 'var(--font-mono)', color: isSelected ? 'var(--color-accent)' : 'var(--color-text-dim)', flexShrink: 0 }}>
                     {isSelected && isPlaying ? '▶' : `${idx + 1}`}
                   </div>
@@ -649,7 +862,6 @@ export default function MusicScreen() {
                     </div>
                   </div>
 
-                  {/* Delete track button */}
                   <button
                     className="btn btn-ghost btn-icon"
                     onClick={(e) => handleDeleteTrack(t.id, e)}
@@ -687,7 +899,6 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
     pos += 4;
   }
 
-  // RIFF identifier
   out.setUint32(0, 0x46464952, true); // "RIFF"
   out.setUint32(4, length - 8, true);
   out.setUint32(8, 0x45564157, true); // "WAVE"
