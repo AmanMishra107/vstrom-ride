@@ -51,6 +51,7 @@ export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return { ...DEFAULT_SETTINGS };
+    const parsed = JSON.parse(raw);
     const loaded: AppSettings = {
       ...DEFAULT_SETTINGS,
       ...parsed,

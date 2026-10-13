@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { AppSettings, MotorcycleProfile } from '../types';
 import { Bike, Palette, MapPin, Bell, ChevronRight } from 'lucide-react';
+import ModuleHeader from '../components/ModuleHeader';
 
 export default function SettingsScreen() {
   const { state, dispatch, navigate } = useApp();
@@ -24,7 +25,11 @@ export default function SettingsScreen() {
 
   return (
     <div className="scrollable" style={{ height: '100%', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ fontWeight: 700, fontSize: 18 }}>Settings</div>
+      <ModuleHeader
+        title="Settings"
+        subtitle="System, telemetry & motorcycle configuration"
+        fallbackScreen="cockpit"
+      />
 
       {sections.map((s) => (
         <div key={s.id}>

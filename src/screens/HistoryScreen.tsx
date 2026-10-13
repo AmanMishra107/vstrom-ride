@@ -4,7 +4,6 @@ import type { SavedRide } from '../types';
 import { useApp } from '../context/AppContext';
 import { formatDistance, formatDurationMs } from '../utils/gpsUtils';
 import { Trash2 } from 'lucide-react';
-import ModuleHeader from '../components/ModuleHeader';
 
 export default function HistoryScreen() {
   const { state } = useApp();
@@ -28,18 +27,11 @@ export default function HistoryScreen() {
 
   if (rides.length === 0) {
     return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 12 }}>
-        <ModuleHeader
-          title="Ride History"
-          subtitle="Past recorded motorcycle journeys"
-          fallbackScreen="cockpit"
-        />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
-          <div style={{ fontSize: 40 }}>🏍️</div>
-          <div style={{ fontWeight: 700, fontSize: 18 }}>No Rides Yet</div>
-          <div style={{ color: 'var(--color-text-muted)', fontSize: 14, textAlign: 'center' }}>
-            Complete your first ride to see it here.
-          </div>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
+        <div style={{ fontSize: 40 }}>🏍️</div>
+        <div style={{ fontWeight: 700, fontSize: 18 }}>No Rides Yet</div>
+        <div style={{ color: 'var(--color-text-muted)', fontSize: 14, textAlign: 'center' }}>
+          Complete your first ride to see it here.
         </div>
       </div>
     );
@@ -50,11 +42,7 @@ export default function HistoryScreen() {
 
   return (
     <div className="scrollable" style={{ height: '100%', padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <ModuleHeader
-        title="Ride History"
-        subtitle="Past recorded motorcycle journeys"
-        fallbackScreen="cockpit"
-      />
+      <div style={{ fontWeight: 700, fontSize: 18 }}>Ride History</div>
 
       {/* Summary banner */}
       <div className="card" style={{ background: 'var(--color-surface2)', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>

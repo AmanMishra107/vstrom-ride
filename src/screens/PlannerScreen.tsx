@@ -120,9 +120,9 @@ export default function PlannerScreen() {
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos((userLat * Math.PI) / 180) *
-        Math.cos((targetLat * Math.PI) / 180) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
+      Math.cos((targetLat * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distM = Math.round(R * c * 1.25); // road factor ~1.25
     const avgKph = 55; // estimated motorcycle pace

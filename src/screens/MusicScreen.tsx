@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 
 import { SkipBack, Play, Pause, SkipForward, Music2, AlertCircle } from 'lucide-react';
 
-import ModuleHeader from '../components/ModuleHeader';
-
 interface MediaInfo {
   title: string;
   artist: string;
@@ -54,11 +52,7 @@ export default function MusicScreen() {
 
   return (
     <div className="scrollable" style={{ height: '100%', padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <ModuleHeader
-        title="Music Controls"
-        subtitle="Handlebar media playback & audio controller"
-        fallbackScreen="cockpit"
-      />
+      <div style={{ fontWeight: 700, fontSize: 18 }}>Music Controls</div>
 
       {!supported ? (
         <div className="card" style={{ background: '#1a1400', border: '1px solid #3d3000' }}>

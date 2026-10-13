@@ -4,7 +4,6 @@ import { getAllFuelEntries } from '../services/storage';
 import { buildFuelSummary, estimateRemainingRange } from '../utils/fuelUtils';
 import type { FuelEntry } from '../types';
 import { Plus, Fuel } from 'lucide-react';
-import ModuleHeader from '../components/ModuleHeader';
 
 export default function FuelScreen() {
   const { state, navigate } = useApp();
@@ -22,16 +21,12 @@ export default function FuelScreen() {
 
   return (
     <div className="scrollable" style={{ height: '100%', padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <ModuleHeader
-        title="Fuel & Mileage"
-        subtitle="Tank logs, consumption calculations & range"
-        fallbackScreen="cockpit"
-        rightAction={
-          <button className="btn btn-primary btn-icon" onClick={() => navigate('fuel-entry')} title="Add fuel entry">
-            <Plus size={18} />
-          </button>
-        }
-      />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontWeight: 700, fontSize: 18 }}>Fuel & Mileage</div>
+        <button className="btn btn-primary btn-icon" onClick={() => navigate('fuel-entry')} title="Add fuel entry">
+          <Plus size={18} />
+        </button>
+      </div>
 
       {/* Summary stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

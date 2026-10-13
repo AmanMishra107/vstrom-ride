@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Phone, AlertTriangle, Share2, Navigation } from 'lucide-react';
-import ModuleHeader from '../components/ModuleHeader';
 
 export default function EmergencyScreen() {
   const { state } = useApp();
@@ -33,12 +32,10 @@ export default function EmergencyScreen() {
   return (
     <div className="scrollable" style={{ height: '100%', padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Header */}
-      <ModuleHeader
-        title="Emergency & Roadside"
-        subtitle="SOS assistance & rider location beacon"
-        fallbackScreen="cockpit"
-        icon={<AlertTriangle size={22} color="var(--color-danger)" />}
-      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <AlertTriangle size={22} color="var(--color-danger)" />
+        <div style={{ fontWeight: 700, fontSize: 18 }}>Emergency & Roadside</div>
+      </div>
 
       <div className="card" style={{ background: '#1a0000', border: '1px solid #4d0000' }}>
         <div style={{ fontSize: 12, color: '#ff6b6b' }}>

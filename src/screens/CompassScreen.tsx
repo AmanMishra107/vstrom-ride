@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { degreesToCardinal } from '../utils/gpsUtils';
 import { AlertCircle } from 'lucide-react';
-import ModuleHeader from '../components/ModuleHeader';
 
 interface OrientationData {
   alpha: number | null;
@@ -71,13 +70,8 @@ export default function CompassScreen() {
   const cardinal = compassHeading !== null ? degreesToCardinal(compassHeading) : null;
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 12 }}>
-      <ModuleHeader
-        title="Compass"
-        subtitle="Real-time bearing & magnetic heading"
-        fallbackScreen="cockpit"
-      />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: 20 }}>
+      <div style={{ fontWeight: 700, fontSize: 18 }}>Compass</div>
 
       {compassHeading === null ? (
         <div className="card" style={{ textAlign: 'center', padding: 24, maxWidth: 300 }}>
@@ -161,7 +155,6 @@ export default function CompassScreen() {
           </div>
         </>
       )}
-      </div>
     </div>
   );
 }

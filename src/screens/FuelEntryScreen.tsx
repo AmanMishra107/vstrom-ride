@@ -3,8 +3,7 @@ import { useApp } from '../context/AppContext';
 import { saveFuelEntry } from '../services/storage';
 import { generateId } from '../utils/idUtils';
 import type { FuelEntry } from '../types';
-import { Check } from 'lucide-react';
-import ModuleHeader from '../components/ModuleHeader';
+import { ArrowLeft, Check } from 'lucide-react';
 
 export default function FuelEntryScreen() {
   const { state, navigate } = useApp();
@@ -68,11 +67,12 @@ export default function FuelEntryScreen() {
 
   return (
     <div className="scrollable" style={{ height: '100%', padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <ModuleHeader
-        title="Log Fuel Fill"
-        subtitle="Record odometer & fuel quantity"
-        fallbackScreen="fuel"
-      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button className="btn btn-ghost btn-icon" onClick={() => navigate('fuel')}>
+          <ArrowLeft size={18} />
+        </button>
+        <div style={{ fontWeight: 700, fontSize: 16 }}>Log Fuel Fill</div>
+      </div>
 
       <FormField label="Date & Time">
         <input type="datetime-local" className="input" value={form.date} onChange={(e) => set('date', e.target.value)} />

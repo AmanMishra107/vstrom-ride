@@ -15,8 +15,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-import ModuleHeader from '../components/ModuleHeader';
-
 export default function WeatherScreen() {
   const { state, navigate } = useApp();
   const { lastSample, settings } = state;
@@ -58,16 +56,19 @@ export default function WeatherScreen() {
   return (
     <div className="scrollable" style={{ height: '100%', padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Header */}
-      <ModuleHeader
-        title="Motorcycle Weather"
-        subtitle="Real-time conditions, wind telemetry & road surface advisory"
-        fallbackScreen="cockpit"
-        rightAction={
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 18 }}>Motorcycle Weather</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+            Real-time conditions, wind telemetry & road surface advisory
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <button className="btn btn-ghost btn-icon" onClick={fetchData} disabled={loading} title="Refresh Weather">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
-        }
-      />
+        </div>
+      </div>
 
       {error ? (
         <div className="card" style={{ background: '#1a0f0f', border: '1px solid #3d1515', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -98,8 +99,8 @@ export default function WeatherScreen() {
                 {weather.provider === 'weatherapi'
                   ? 'WeatherAPI.com Live'
                   : weather.provider === 'openweathermap'
-                  ? 'OpenWeatherMap Global'
-                  : 'Open-Meteo High-Res Model'}
+                    ? 'OpenWeatherMap Global'
+                    : 'Open-Meteo High-Res Model'}
               </div>
               <div style={{ fontSize: 11, color: 'var(--color-text-dim)', fontFamily: 'var(--font-mono)' }}>
                 {lat.toFixed(3)}°N, {lng.toFixed(3)}°E
@@ -169,13 +170,12 @@ export default function WeatherScreen() {
             <div
               className="card"
               style={{
-                borderLeft: `4px solid ${
-                  weather.motorcycleAdvisory.level === 'warning'
+                borderLeft: `4px solid ${weather.motorcycleAdvisory.level === 'warning'
                     ? 'var(--color-danger)'
                     : weather.motorcycleAdvisory.level === 'caution'
-                    ? 'var(--color-warn)'
-                    : 'var(--color-success)'
-                }`,
+                      ? 'var(--color-warn)'
+                      : 'var(--color-success)'
+                  }`,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 6,

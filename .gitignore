@@ -6,5 +6,3 @@ dist-ssr
 *.local
 .DS_Store
 *.log
-_cert.pem
-*.pem

@@ -3,7 +3,6 @@ import { getAllRides } from '../services/storage';
 import type { SavedRide } from '../types';
 import { useApp } from '../context/AppContext';
 import { formatDistance } from '../utils/gpsUtils';
-import ModuleHeader from '../components/ModuleHeader';
 
 export default function AnalyticsScreen() {
   const { state, navigate } = useApp();
@@ -14,18 +13,11 @@ export default function AnalyticsScreen() {
 
   if (rides.length === 0) {
     return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 12 }}>
-        <ModuleHeader
-          title="Ride Analytics"
-          subtitle="Aggregated motorcycle performance & stats"
-          fallbackScreen="cockpit"
-        />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24, textAlign: 'center' }}>
-          <div style={{ fontSize: 40 }}>📊</div>
-          <div style={{ fontWeight: 700, fontSize: 18 }}>No Data Yet</div>
-          <div style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Complete rides to see analytics.</div>
-          <button className="btn btn-primary" onClick={() => navigate('cockpit')}>Go Ride!</button>
-        </div>
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24, textAlign: 'center' }}>
+        <div style={{ fontSize: 40 }}>📊</div>
+        <div style={{ fontWeight: 700, fontSize: 18 }}>No Data Yet</div>
+        <div style={{ color: 'var(--color-text-muted)', fontSize: 14 }}>Complete rides to see analytics.</div>
+        <button className="btn btn-primary" onClick={() => navigate('cockpit')}>Go Ride!</button>
       </div>
     );
   }
@@ -40,11 +32,7 @@ export default function AnalyticsScreen() {
 
   return (
     <div className="scrollable" style={{ height: '100%', padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <ModuleHeader
-        title="Ride Analytics"
-        subtitle="Aggregated motorcycle performance & telemetry"
-        fallbackScreen="cockpit"
-      />
+      <div style={{ fontWeight: 700, fontSize: 18 }}>Analytics</div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <StatTile label="Total Rides" value={String(rides.length)} />

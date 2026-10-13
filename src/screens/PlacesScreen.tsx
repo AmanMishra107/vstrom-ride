@@ -5,13 +5,11 @@ import type { SavedPlace } from '../types';
 import { MapPin, Plus, Trash2, Home, Briefcase, Fuel, Coffee } from 'lucide-react';
 import { generateId } from '../utils/idUtils';
 
-import ModuleHeader from '../components/ModuleHeader';
-
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  home:   <Home size={16} />,
-  work:   <Briefcase size={16} />,
-  fuel:   <Fuel size={16} />,
-  food:   <Coffee size={16} />,
+  home: <Home size={16} />,
+  work: <Briefcase size={16} />,
+  fuel: <Fuel size={16} />,
+  food: <Coffee size={16} />,
   custom: <MapPin size={16} />,
 };
 
@@ -43,21 +41,17 @@ export default function PlacesScreen() {
 
   return (
     <div className="scrollable" style={{ height: '100%', padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <ModuleHeader
-        title="Saved Places"
-        subtitle="Waypoints, pitstops & favorite locations"
-        fallbackScreen="cockpit"
-        rightAction={
-          <button
-            className="btn btn-primary btn-icon"
-            onClick={handleAddCurrent}
-            disabled={!state.lastSample}
-            title="Save current location"
-          >
-            <Plus size={18} />
-          </button>
-        }
-      />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontWeight: 700, fontSize: 18 }}>Saved Places</div>
+        <button
+          className="btn btn-primary btn-icon"
+          onClick={handleAddCurrent}
+          disabled={!state.lastSample}
+          title="Save current location"
+        >
+          <Plus size={18} />
+        </button>
+      </div>
 
       {!state.lastSample && (
         <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
